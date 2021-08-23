@@ -156,8 +156,8 @@ echo "
 PersistentKeepalive = 25
 PublicKey = $(echo "$wireguard_json" | jq -r '.server_key')
 # AllowedIPs = ${PIA_ALLOWED_IPS:-0.0.0.0/0}
+AllowedIPs = ${WG_SERVER_VIP}
 Endpoint = ${WG_SERVER_IP}:$(echo "$wireguard_json" | jq -r '.server_port')
-# Server VIP: $WG_SERVER_VIP
 " >> /etc/wireguard/pia.conf || exit 1
 
 echo -e ${GREEN}OK!${NC}
