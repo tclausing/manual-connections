@@ -100,6 +100,13 @@ wireguard_json="$(curl -s -G \
   "https://${WG_HOSTNAME}:1337/addKey" )"
 export wireguard_json
 
+# Tom
+echo WG JSON:
+echo "$wireguard_json" | jq
+
+WG_SERVER_VIP="$(echo "$wireguard_json" | jq -r '.server_vip')"
+export WG_SERVER_VIP
+
 # Check if the API returned OK and stop this script if it didn't.
 if [ "$(echo "$wireguard_json" | jq -r '.status')" != "OK" ]; then
   >&2 echo -e "${RED}Server did not return OK. Stopping now.${NC}"
@@ -130,17 +137,29 @@ if [ "$PIA_DNS" == true ]; then
 fi
 echo -n "Trying to write /etc/wireguard/pia.conf..."
 mkdir -p /etc/wireguard
+
 echo "
 [Interface]
 Address = $(echo "$wireguard_json" | jq -r '.peer_ip')
 PrivateKey = $privKey
 $dnsSettingForVPN
+" > /etc/wireguard/pia.conf || exit 1
+
+cat /etc/wireguard/pia.conf.hooks \
+| sed "s/WG_SERVER_IP/${WG_SERVER_IP}/g" \
+| sed "s/WG_SERVER_VIP/${WG_SERVER_VIP}/g" \
+>> /etc/wireguard/pia.conf || exit 1
+
+echo "
+
 [Peer]
 PersistentKeepalive = 25
 PublicKey = $(echo "$wireguard_json" | jq -r '.server_key')
-AllowedIPs = 0.0.0.0/0
+# AllowedIPs = ${PIA_ALLOWED_IPS:-0.0.0.0/0}
 Endpoint = ${WG_SERVER_IP}:$(echo "$wireguard_json" | jq -r '.server_port')
-" > /etc/wireguard/pia.conf || exit 1
+# Server VIP: $WG_SERVER_VIP
+" >> /etc/wireguard/pia.conf || exit 1
+
 echo -e ${GREEN}OK!${NC}
 
 # Start the WireGuard interface.

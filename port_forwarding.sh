@@ -95,6 +95,9 @@ else
 fi
 export payload_and_signature
 
+echo payload_and_signature:
+echo "$payload_and_signature" | jq
+
 # Check if the payload and the signature are OK.
 # If they are not OK, just stop the script.
 if [ "$(echo "$payload_and_signature" | jq -r '.status')" != "OK" ]; then

@@ -1,0 +1,23 @@
+
+# add eth0-2 interface
+PostUp = ip link add link eth0 address dc:a6:32:84:4c:3c eth0-2 type macvlan && ifconfig eth0-2 up && dhclient eth0-2 && echo "eth0-2 added" || echo "eth0-2 already exists"
+
+# allow forwarding from eth0-2, NAT out of pia interface
+PostUp = iptables -A FORWARD -i eth0-2 -j ACCEPT; iptables -t nat -A POSTROUTING -o pia -j MASQUERADE
+PostDown = iptables -D FORWARD -i eth0-2 -j ACCEPT; iptables -t nat -D POSTROUTING -o pia -j MASQUERADE
+
+# route VPN packets out eth0
+PreUp = ip route add WG_SERVER_IP via 10.1.0.1 dev eth0 && echo "pia server route added" || echo "pia server route already exists"
+PostDown = ip route del WG_SERVER_IP via 10.1.0.1 dev eth0
+
+# mark packets coming in on eth0-2
+PostUp = iptables -A PREROUTING -t mangle -i eth0-2 -j MARK --set-mark 2
+PostDown = iptables -D PREROUTING -t mangle -i eth0-2 -j MARK --set-mark 2
+
+# default route to WG server over pia interface in table PIA
+PostUp = ip route add default via WG_SERVER_VIP dev pia table PIA
+PostDown = ip route del default via WG_SERVER_VIP dev pia table PIA
+
+# use PIA table for marked packets
+PostUp = ip rule add from all fwmark 2 table PIA
+PostDown = ip rule del from all fwmark 2 table PIA
